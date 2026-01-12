@@ -273,3 +273,9 @@ public async Task<IActionResult> ObterUltimasMedicoesSetor(int setorEquipamentoI
     return Ok(response);
 }
 ```
+Parte 03: 
+
+a) Resposta: A solucão Ideal seia uma Arquitetura event-driven, com processamento assicrono. Memoria distribuida e envio de email desaclopado. Asp.Net
+ Core, bancop de dados Relacional, Mensageria "RabbitMQ", Redis,.NetWorker Service e SMPT/SendGrid.
+
+ 
