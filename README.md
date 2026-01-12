@@ -1,7 +1,7 @@
 ## TesteGlobalthings
 Parte 01: 
 
-a) Resposta: Criaria uma API com um endpoint para recebimento de medições em lote (batch),  "POST /medicoes" e uma chave unica entre ID e DataHoraMedicao para evitar duplicidade no banco.  
+a) Resposta: Criei uma API com um endpoint para recebimento de medições em lote (batch),  "POST /medicoes" e uma chave unica entre ID e DataHoraMedicao para evitar duplicidade no banco.  
 
 Justificativa:
 Envio em Lote: Como o firmware pode acumular dados quando o WiFi está intermitente, a API precisa aceitar várias medições no mesmo request
@@ -105,4 +105,75 @@ public async Task<IActionResult> Medicoes([FromBody] MedicoesBatchDTO request)
 
 c) Resposta: Na minha opinião e também pela minha experiência em baco de dados usaria um banco de dados relacional como SQLServer, Postgre ou Mysql "Que é o que está no exemplo que criei", por ser mais estruturada e tipos bem definidos, consistência e integridade dos dados, sem contar o suporte ao DateTimeOffset.
 
-  
+Parte 02: 
+
+a) Resposta: Criei um endpoint na APIMonitoramento para Vincular um Setor/Equipamento à um sensor,  "POST /VincularSensor"  onde  crio mais duas novas tabelas uma de Sensor e outra de SetorEquipamento que fazem esse controle. 
+
+Models de tabelas
+
+Sensor
+```
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+using System.Text.Json.Serialization;
+namespace APIMonitoramento.Models;
+
+[Table("Sensor")]
+public class Sensor
+{
+    [Key]
+    public int Id { get; set; }
+
+    [Required]
+    [StringLength(80)]
+    public string Codigo { get; set; } = string.Empty;
+
+    [Required]
+    public int SetorEquipamentoId { get; set; }
+
+    public SetorEquipamento SetorEquipamento { get; set; } = null!;
+    
+    [JsonIgnore]
+    //Propiedade de navegação de 1 para muitos.
+    public ICollection<Medicoes> Medicoes { get; set; }= new List<Medicoes>();
+
+}
+```
+
+SetorEquipamento
+
+```
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+using System.Text.Json.Serialization;
+namespace APIMonitoramento.Models;
+
+[Table("SetorEquipamento")]
+public class SetorEquipamento
+{
+    [Key]
+    public int Id { get; set; }
+
+    [Required]
+    [StringLength(80)]
+    public string Nome { get; set; } = string.Empty;
+
+    [JsonIgnore]
+    //Propiedade de navegação de 1 para muitos.
+    public ICollection<Sensor> Sensores { get; set; } = new List<Sensor>();
+}
+
+```
+DTO de Request
+
+```
+namespace APIMonitoramento.DTO
+{
+    public class VincularSensorDTO
+    {
+        public int SensorId { get; set; }
+        public int SetorEquipamentoId { get; set; }
+
+    }
+}
+```
