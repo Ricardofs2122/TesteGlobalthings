@@ -26,7 +26,8 @@ public class MedicoesBatchDTO
 }
 
 ```
-E temos o request e persistencia em banco de dados tambem trazendo quandos dados foram gravados e quanto deram falha.
+
+E temos o request e Persistência em banco de dados tambem trazendo quandos dados não foram gravados e quanto deram falha.
 
 ```
 [HttpPost]
@@ -102,5 +103,6 @@ public async Task<IActionResult> Medicoes([FromBody] MedicoesBatchDTO request)
 }
 ```
 
+c) Resposta: Na minha opinião e também pela minha experiência em baco de dados usaria um banco de dados relacional como SQLServer, Postgre ou Mysql "Que é o que está no exemplo que criei", por ser mais estruturada e tipos bem definidos, consistência e integridade dos dados, sem contar o suporte ao DateTimeOffset.
 
   
