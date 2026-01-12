@@ -177,3 +177,99 @@ namespace APIMonitoramento.DTO
     }
 }
 ```
+
+Endpoit para VincularSetor
+```
+    [HttpPost("/VincularSensor")]
+    public async Task<IActionResult> VincularSensor([FromBody] VincularSensorDTO request)
+    {
+        var sensor = await _context.Sensor.FirstOrDefaultAsync(s => s.Id == request.SensorId);
+        
+        if (sensor == null) 
+            return NotFound("Sensor não encontrado");
+
+        var setor = await _context.SetorEquipamento.FirstOrDefaultAsync(s => s.Id.Equals(request.SetorEquipamentoId));
+
+        if (setor == null)
+            return NotFound("Setor/Equipamento não encontrado");
+
+        sensor.SetorEquipamentoId = setor.Id;
+
+        await _context.SaveChangesAsync();
+        
+        return Ok("Sensor Vinculado!");
+    }
+}
+```
+b) Resposta: Criei um endpoint na APIMonitoramento trazendo os ultimas medições de um dterminado Setor ,  "GET /{setorEquipamentoId}/ObterUltimasMedicoesSetor" , onde criei os DTOs de response  e o Endpoint como descritos abaixo
+ 
+DTOs
+
+```
+namespace APIMonitoramento.DTO
+{
+    public class MedicaoResponseDto
+    {
+        public DateTimeOffset DataHoraMedicao { get; set; }
+        public decimal Valor { get; set; }
+    }
+}
+
+namespace APIMonitoramento.DTO
+{
+    public class SensorMedicoesResponseDto
+    {
+        public int SensorId { get; set; }
+        public string Codigo { get; set; } = string.Empty;
+        public List<MedicaoResponseDto> Medicoes { get; set; } = new();
+    }
+}
+
+namespace APIMonitoramento.DTO
+{
+    public class SetorEquipamentoMedicoesResponseDto
+    {
+        public int SetorEquipamentoId { get; set; }
+        public string Nome { get; set; } = string.Empty;
+        public List<SensorMedicoesResponseDto> Sensores { get; set; } = new();
+    }
+}
+```
+
+EndPoint
+
+```
+[HttpGet("/{setorEquipamentoId}/ObterUltimasMedicoesSetor")]
+public async Task<IActionResult> ObterUltimasMedicoesSetor(int setorEquipamentoId)
+{
+    var setor = await _context.Set<SetorEquipamento>()
+        .Include(s => s.Sensores)
+            .ThenInclude(sensor => sensor.Medicoes)
+        .FirstOrDefaultAsync(s => s.Id == setorEquipamentoId);
+
+    if (setor == null)
+        return NotFound("Setor/Equipamento não encontrado.");
+
+    var response = new SetorEquipamentoMedicoesResponseDto
+    {
+        SetorEquipamentoId = setor.Id,
+        Nome = setor.Nome,
+        Sensores = setor.Sensores.Select(sensor => new SensorMedicoesResponseDto
+        {
+            SensorId = sensor.Id,
+            Codigo = sensor.Codigo,
+            Medicoes = sensor.Medicoes
+                .OrderByDescending(m => m.DataHoraMedicao)
+                .Take(10)
+                .Select(m => new MedicaoResponseDto
+                {
+                    DataHoraMedicao = (DateTimeOffset)m.DataHoraMedicao,
+                    Valor = (Decimal)m.Medicao
+                })
+                .ToList()
+        }).ToList()
+    };
+
+    return Ok(response);
+}
+```
