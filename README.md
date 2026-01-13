@@ -278,4 +278,109 @@ Parte 03:
 a) Resposta: A solucão Ideal seia uma Arquitetura event-driven, com processamento assicrono. Memoria distribuida e envio de email desaclopado. Asp.Net
  Core, bancop de dados Relacional, Mensageria "RabbitMQ", Redis,.NetWorker Service e SMPT/SendGrid.
 
+b) Resposta: 
+Primeiro: Criei as constantes de Dominio
+```
+namespace APIMonitoramento.Dominio
+{
+    public static class LimitesSensor
+    {
+        public const decimal Minimo = 1m;
+        public const decimal Maximo = 50m;
+        public const decimal MargemErro= 2m;
+
+        public const int LimiteConsecutivo = 5;
+        public const int TotalMedia = 50;
+
+    }
+}
+```
+
+Segundo: Regra de Alerta do Sensor(CincoForaLimite e MediaUltima50Mergens)
+
+```
+namespace APIMonitoramento.Dominio.Services
+{
+    public static class RegraAlertaSensor
+    {
+        public static bool CincoForaLimite(IReadOnlyList<decimal> medicoesOrdenadas)
+        {
+            int cont = 0;
+
+            foreach (var valor in medicoesOrdenadas)
+            {
+                if (valor < LimitesSensor.Minimo || valor > LimitesSensor.Maximo)
+                {
+                    cont++;
+                    if (cont >= LimitesSensor.LimiteConsecutivo)
+                        return true;
+                }
+                else 
+                {
+                    cont = 0;
+                }
+            }
+            return false;
+        }
+
+        public static bool MediaUltima50Mergens (IReadOnlyList<decimal> medicoes)
+        {
+            if (medicoes.Count < LimitesSensor.TotalMedia)
+                return false;
+
+            var ultimas50 = medicoes.TakeLast(LimitesSensor.TotalMedia).ToList();
+
+            var media = ultimas50.Average();
+
+            bool pertoMim = media >= LimitesSensor.Minimo - LimitesSensor.MargemErro && media <= LimitesSensor.Minimo + LimitesSensor.MargemErro;
+            bool pertoMax = media >= LimitesSensor.Maximo - LimitesSensor.MargemErro && media <= LimitesSensor.Maximo + LimitesSensor.MargemErro;
+
+            return pertoMim || pertoMax;
+        }
+
+    }
+}
+```
+
+Terceiro Servico de Email (IEmailService e EmailService)
+
+```
+using System.Threading.Tasks;
+
+namespace APIMonitoramento.Infrastruture.Email
+{
+    public interface IEmailService
+    {
+        Task EnviarAsync(string assunto, string mensagem);
+    }
+}
+```
+```
+using System;
+using System.Threading.Tasks;
+
+namespace APIMonitoramento.Infrastruture.Email
+{
+    public class EmailService : IEmailService
+    {
+        private readonly IServiceScopeFactory _scopeFactory;
+
+        public EmailService(IServiceScopeFactory scopeFactory)
+        {
+            _scopeFactory = scopeFactory;
+        }
+        public Task EnviarAsync(string assunto, string mensagem)
+        {
+            Console.WriteLine("Email");
+            Console.WriteLine($"Assunto: {assunto}");
+            Console.WriteLine($"Mensagem: {mensagem}");
+            
+            return Task.CompletedTask;
+        }
+    }
+}
+
+```
+
+
  
