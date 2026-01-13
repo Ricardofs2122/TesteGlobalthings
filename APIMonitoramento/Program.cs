@@ -1,5 +1,7 @@
 using APIMonitoramento.Context;
 using Microsoft.EntityFrameworkCore;
+using APIMonitoramento.BackgroudServices;
+using APIMonitoramento.Infrastruture.Email;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -16,6 +18,9 @@ var mySqlConnection = builder.Configuration.GetConnectionString("DefaultConnecti
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseMySql(mySqlConnection,
     ServerVersion.AutoDetect(mySqlConnection)));
+
+builder.Services.AddScoped<IEmailService, EmailService>();
+builder.Services.AddHostedService<AlertaBackgroundService>();
 
 var app = builder.Build();
 
