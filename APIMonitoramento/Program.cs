@@ -19,8 +19,8 @@ builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseMySql(mySqlConnection,
     ServerVersion.AutoDetect(mySqlConnection)));
 
-builder.Services.AddScoped<IEmailService, EmailService>();
-builder.Services.AddHostedService<AlertaBackgroundService>();
+//builder.Services.AddScoped<IEmailService, EmailService>();
+//builder.Services.AddHostedService<AlertaBackgroundService>();
 
 var app = builder.Build();
 
