@@ -11,7 +11,8 @@ Chave Única: Caso os sensores dem algum problema ou reenviem dados duplicados �
 b)Resposta: A API deve receber uma lista de Medições , pois o sensor pode enviar dados acumulados ou não. Para isso foram criados dois DTOs de Request. 
 
 Um com todos os dados que irão persistir no banco e cum com o List que ira receber os dados do FromBody
-```
+
+```csharp
 public class MedicoesDTO
 {
   public int Id { get; set; }
@@ -29,7 +30,7 @@ public class MedicoesBatchDTO
 
 E temos o request e Persistência em banco de dados tambem trazendo quandos dados não foram gravados e quanto deram falha.
 
-```
+```csharp
 [HttpPost]
 public async Task<IActionResult> Medicoes([FromBody] MedicoesBatchDTO request)
 
@@ -112,7 +113,8 @@ a) Resposta: Criei um endpoint na APIMonitoramento para Vincular um Setor/Equipa
 Models de tabelas
 
 Sensor
-```
+
+```csharp
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Text.Json.Serialization;
@@ -142,7 +144,7 @@ public class Sensor
 
 SetorEquipamento
 
-```
+```csharp
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Text.Json.Serialization;
@@ -166,7 +168,7 @@ public class SetorEquipamento
 ```
 DTO de Request
 
-```
+```csharp
 namespace APIMonitoramento.DTO
 {
     public class VincularSensorDTO
@@ -179,7 +181,8 @@ namespace APIMonitoramento.DTO
 ```
 
 Endpoit para VincularSetor
-```
+
+```csharp
     [HttpPost("/VincularSensor")]
     public async Task<IActionResult> VincularSensor([FromBody] VincularSensorDTO request)
     {
@@ -205,7 +208,7 @@ b) Resposta: Criei um endpoint na APIMonitoramento trazendo os ultimas mediçõe
  
 DTOs
 
-```
+```csharp
 namespace APIMonitoramento.DTO
 {
     public class MedicaoResponseDto
@@ -238,7 +241,7 @@ namespace APIMonitoramento.DTO
 
 EndPoint
 
-```
+```csharp
 [HttpGet("/{setorEquipamentoId}/ObterUltimasMedicoesSetor")]
 public async Task<IActionResult> ObterUltimasMedicoesSetor(int setorEquipamentoId)
 {
@@ -280,7 +283,8 @@ a) Resposta: A solucão Ideal seia uma Arquitetura event-driven, com processamen
 
 b) Resposta: 
 Primeiro: Criei as constantes de Dominio
-```
+
+```csharp
 namespace APIMonitoramento.Dominio
 {
     public static class LimitesSensor
@@ -298,7 +302,7 @@ namespace APIMonitoramento.Dominio
 
 Segundo: Regra de Alerta do Sensor(CincoForaLimite e MediaUltima50Mergens)
 
-```
+```csharp
 namespace APIMonitoramento.Dominio.Services
 {
     public static class RegraAlertaSensor
@@ -344,7 +348,7 @@ namespace APIMonitoramento.Dominio.Services
 
 Terceiro: Servico de Email (IEmailService e EmailService)
 
-```
+```csharp
 using System.Threading.Tasks;
 
 namespace APIMonitoramento.Infrastruture.Email
@@ -383,7 +387,7 @@ namespace APIMonitoramento.Infrastruture.Email
 ```
 Quarto: Crio um BrackgroudService que faz o envio de e-mail e Alertas
 
-```
+```csharp
 
 using APIMonitoramento.Context;
 using APIMonitoramento.Dominio.Services;
@@ -447,7 +451,7 @@ namespace APIMonitoramento.BackgroudServices
 
 Quinto e Ùltimo: Registrar o Servico no Program.cs
 
-```
+```csharp
 using APIMonitoramento.Context;
 using Microsoft.EntityFrameworkCore;
 using APIMonitoramento.BackgroudServices;
@@ -490,6 +494,178 @@ app.MapControllers();
 app.Run();
 
 ```
+
+c) Resposta:
+
+Testes criados:
+1) Deve retornar true quando houver 5 medições consecutivas abaixo do minimo, no código = "CincoMedicoesAbaixoMinimo()"
+2) Deve retornar true quando houver 5 Medicoes consecutivas acima do maximo, no código = "CincoMedicoesAcimaMaximo()"
+3) Deve retornar false quando houver menos de 5 Consecutivas, no código = "CincoMedicoesMenosdeCinco()"
+4) Deve resetar contador quando valor está dentro do limite, no código = "CincoMedicoesZeraContadorDentoLimite()"
+5) Deve retornar false quando todas as medicoes estao no Limite, no código = "CincoMedicoesTodasMedicoesNoLimite"
+6) Deve retornar false quando houver menos de 50 medicoes, no código = "MediaUltima50MergensFalsoMenos50Medicoes"
+7) Deve retornar true quando media está perto do minimo, no código = "MediaUltima50MergensVerdadeiroMediaPertoMinimo()"
+8) Deve retornar true quando media está perto do maximo, no código = "MediaUltima50MergensVerdadeiroMediaPertoMaximo()"
+9) Deve retornar false quando media está longe dos limites, no código = "MediaUltima50MergensFalsoMediaLongeLimites()"
+10) Deve retornar true quando media está exatamente no limite inferior com Margem, no código = "MediaUltima50MergensVerdadeiroMediaExatamenteLimiteInferior()"
+11) Deve retornar true quando media está exatamente no limite superior com margem, no código = "RegraAlertaSensorVerdadeiroMediaExatamenteLimiteSuperior()"
+
+```csharp
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using APIMonitoramento.Dominio;
+using APIMonitoramento.Dominio.Services;
+using Xunit;
+
+namespace APIMonitoramentoTests.Dominio.Services
+{
+    public class TesteAlertaRegraSensores
+    {
+        [Fact]
+        public void CincoMedicoesAbaixoMinimo()
+        {
+            var medicoes = new decimal[]
+            {
+                10, 0.9m, 0.8m, 0.7m, 0.6m, 0.5m
+            };
+
+            var resultado = RegraAlertaSensor.CincoForaLimite(medicoes);
+
+            Assert.True(resultado);
+        }
+
+        [Fact]
+        public void CincoMedicoesAcimaMaximo()
+        {
+            var medicoes = new decimal[]
+            {
+                45, 51, 52, 53, 54, 55
+            };
+
+            var resultado = RegraAlertaSensor.CincoForaLimite(medicoes);
+
+            Assert.True(resultado);
+        }
+
+        [Fact]
+        public void CincoMedicoesMenosdeCinco()
+        {
+            var medicoes = new decimal[]
+            {
+                0.9m, 0.8m, 0.7m, 1.5m, 0.6m
+            };
+
+            var resultado = RegraAlertaSensor.CincoForaLimite(medicoes);
+
+            Assert.False(resultado);
+        }
+
+        [Fact]
+        public void CincoMedicoesZeraContadorDentoLimite()
+        {
+            var medicoes = new decimal[]
+            {
+                0.9m, 0.8m, 0.7m, 1.2m, 0.6m, 0.5m, 0.4m
+            };
+
+            var resultado = RegraAlertaSensor.CincoForaLimite(medicoes);
+
+
+            Assert.False(resultado);
+        }
+
+        [Fact]
+        public void CincoMedicoesTodasMedicoesNoLimite()
+        {
+            var medicoes = new decimal[]
+            {
+                10, 20, 30, 40, 50
+            };
+
+            var resultado = RegraAlertaSensor.CincoForaLimite(medicoes);
+
+            Assert.False(resultado);
+        }
+
+        [Fact]
+        public void MediaUltima50MergensFalsoMenos50Medicoes()
+        {
+            var medicoes = Enumerable.Repeat(10m, 49).ToList();
+
+            var resultado = RegraAlertaSensor.MediaUltima50Mergens(medicoes);
+                
+
+            Assert.False(resultado);
+        }
+
+        [Fact]
+        public void MediaUltima50MergensVerdadeiroMediaPertoMinimo()
+        {
+            var medicoes = Enumerable
+                .Repeat(1.5m, 50)
+                .ToList();
+
+            var resultado = RegraAlertaSensor.MediaUltima50Mergens(medicoes);
+
+            Assert.True(resultado);
+        }
+
+        [Fact]
+        public void MediaUltima50MergensVerdadeiroMediaPertoMaximo()
+        {
+            var medicoes = Enumerable
+                .Repeat(49.5m, 50)
+                .ToList();
+
+            var resultado = RegraAlertaSensor.MediaUltima50Mergens(medicoes);
+
+            Assert.True(resultado);
+        }
+
+        [Fact]
+        public void MediaUltima50MergensFalsoMediaLongeLimites()
+        {
+            var medicoes = Enumerable
+                .Repeat(25m, 50)
+                .ToList();
+
+            var resultado = RegraAlertaSensor.MediaUltima50Mergens(medicoes);
+
+            Assert.False(resultado);
+        }
+
+        [Fact]
+        public void MediaUltima50MergensVerdadeiroMediaExatamenteLimiteInferior()
+        {
+            var medicoes = Enumerable
+                .Repeat(LimitesSensor.Minimo - LimitesSensor.MargemErro, 50)
+                .ToList();
+
+            var resultado = RegraAlertaSensor.MediaUltima50Mergens(medicoes);
+
+            Assert.True(resultado);
+        }
+
+        [Fact]
+        public void RegraAlertaSensorVerdadeiroMediaExatamenteLimiteSuperior()
+        {
+            var medicoes = Enumerable
+                .Repeat(LimitesSensor.Maximo + LimitesSensor.MargemErro, 50)
+                .ToList();
+
+            var resultado = RegraAlertaSensor.MediaUltima50Mergens(medicoes);
+
+            Assert.True(resultado);
+        }
+
+    }
+}
+
+```
+
 
 
 
