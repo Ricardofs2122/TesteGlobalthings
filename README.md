@@ -666,6 +666,18 @@ namespace APIMonitoramentoTests.Dominio.Services
 
 ```
 
+Parte 4
+
+Resposta:
+
+Uma das primeiras soluções seria a utilização de mensageria, permitindo que a API apenas receba e publique os dados, enquanto o processamento ocorre de forma assíncrona, respeitando o ritmo que a aplicação consegue suportar.
+
+Outra abordagem seria o uso de múltiplos workers processando mensagens em paralelo, reduzindo o atraso acumulado na fila e permitindo escalabilidade horizontal conforme o volume de dados cresce.
+
+Também é possível utilizar Redis como cache de processamento, ajudando no controle de carga, agregação temporária de dados e evitando reprocessamentos desnecessários.
+
+Por fim, a implementação de observabilidade (métricas, logs e monitoramento) é essencial para identificar gargalos, entender o comportamento do sistema sob carga e aplicar estratégias adicionais de acordo com as ferramentas disponíveis no ambiente do cliente.
+
 
 
 
